@@ -26,23 +26,23 @@ for page in pdf:
 
 # --- Définition des paliers via sliders hiérarchiques ---
 st.sidebar.header("Pages accessibles par niveau")
-p_free   = st.sidebar.slider("Membre Gratuit : jusqu'à la page", 1, page_count, 2)
+# Dragon de Cuivre : jusqu’à cette page (inclus)
 p_copper = st.sidebar.slider(
-    "Dragon de Cuivre : jusqu'à la page",
-    p_free, page_count, min(p_free + 2, page_count)
+    "Dragon de Cuivre : jusqu’à la page", 1, page_count, min(2, page_count)
 )
+# Dragon d’Argent : jusqu’à cette page (inclus)
 p_silver = st.sidebar.slider(
-    "Dragon d'Argent : jusqu'à la page",
+    "Dragon d’Argent : jusqu’à la page",
     p_copper, page_count, min(p_copper + 2, page_count)
 )
-levels = {
-    "Membre Gratuit":   p_free,
+# Dragon d’Or : accès à toutes les pages
+d_levels = {
     "Dragon de Cuivre": p_copper,
-    "Dragon d'Argent":  p_silver,
-    "Dragon d'Or":       page_count
+    "Dragon d’Argent": p_silver,
+    "Dragon d’Or": page_count
 }
 
-ordered_levels = ["Membre Gratuit", "Dragon de Cuivre", "Dragon d'Argent", "Dragon d'Or"]
+ordered_levels = ["Dragon de Cuivre", "Dragon d’Argent", "Dragon d’Or"]
 
 # --- Chargement police Bold + icône ---
 font_path = os.path.join(os.getcwd(), "BeaufortforLOL", "BeaufortforLOL-Bold.otf")
@@ -51,25 +51,30 @@ font = ImageFont.truetype(font_path, font_size)
 lock_img_orig = Image.open("lock.png").convert("RGBA")
 
 def get_required_level(page_idx: int) -> str:
+    # Retourne le niveau minimal nécessaire pour voir la page
     for lvl in ordered_levels:
-        if page_idx <= levels[lvl]:
+        if page_idx <= d_levels[lvl]:
             return lvl
     return ordered_levels[-1]
 
 def overlay_badge(page_img: Image.Image, level_name: str) -> Image.Image:
     w, h = page_img.size
+    # Redimension de l'icône à 15% de la largeur
     icon_scale = 0.15
     icon_w = int(w * icon_scale)
     aspect = lock_img_orig.width / lock_img_orig.height
     icon_h = int(icon_w / aspect)
     lock_img = lock_img_orig.resize((icon_w, icon_h), resample=Image.LANCZOS)
+    # Préparer badge transparent
     badge = Image.new("RGBA", page_img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(badge)
+    # Texte multi-lignes
     text = f"Réservé aux\n{level_name}"
     bbox = draw.multiline_textbbox((0, 0), text, font=font)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
     total_h = icon_h + 10 + text_h
+    # Centrage vertical et horizontal
     y0 = (h - total_h) // 2
     x_icon = (w - icon_w) // 2
     x_text = (w - text_w) // 2
@@ -82,13 +87,15 @@ preview_lvl = st.selectbox("Aperçu pour le niveau :", ordered_levels)
 st.subheader(f"Aperçu — {preview_lvl}")
 cols = st.columns(4)
 thumb_w = 120
-
 for idx, orig in enumerate(pil_pages, start=1):
     img = orig.copy()
-    if idx > levels[preview_lvl]:
+    # Si page non accessible par le niveau preview, flouter + badge
+    if idx > d_levels[preview_lvl]:
         img = img.filter(ImageFilter.GaussianBlur(radius=radius))
-        required = get_required_level(idx)
-        img = overlay_badge(img, required)
+        # badge pour le palier requis
+        req = get_required_level(idx)
+        # si le palier requis est le même que preview, sauter (mais ici preview < req)
+        img = overlay_badge(img, req)
     col = cols[(idx - 1) % 4]
     col.image(img, caption=f"Page {idx}", width=thumb_w)
 
@@ -98,13 +105,13 @@ st.subheader("Téléchargement des PDF par niveau")
 for lvl in ordered_levels:
     buf = io.BytesIO()
     out_pdf = fitz.open()
-    max_page = levels[lvl]
+    max_page = d_levels[lvl]
     for idx, orig in enumerate(pil_pages, start=1):
         img = orig.copy()
         if idx > max_page:
             img = img.filter(ImageFilter.GaussianBlur(radius=radius))
-            required = get_required_level(idx)
-            img = overlay_badge(img, required)
+            req = get_required_level(idx)
+            img = overlay_badge(img, req)
         tmp = io.BytesIO()
         img.save(tmp, format="PNG")
         rect = pdf[idx - 1].rect
