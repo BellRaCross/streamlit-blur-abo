@@ -52,15 +52,31 @@ font = ImageFont.truetype(font_path, font_size)
 lock_img_orig = Image.open("lock.png").convert("RGBA")
 
 # Fonction pour déterminer le texte du badge
-def get_badge_text(page_idx: int) -> str:
-    if page_idx > d_levels["Dragons d’Argent"]:
-        return "Dragons d’Or"
-    elif page_idx > d_levels["Dragons de Cuivre"]:
-        return "Dragons d’Argent et d’Or"
-    else:
-        return ""
+"
+"def get_badge_text(page_idx: int) -> str:
+"
+"    # Retourne le texte adapté, avec retours à la ligne si nécessaire
+"
+"    if page_idx > d_levels["Dragons d’Argent"]:
+"
+"        # Pages Or
+"
+"        return "Dragons d’Or"
+"
+"    elif page_idx > d_levels["Dragons de Cuivre"]:
+"
+"        # Pages Argent: deux lignes
+"
+"        return "Dragons d’Argent
+et d’Or"
+"
+"    else:
+"
+"        return ""
 
-# Fonction pour overlay du badge centré
+"
+"# Fonction pour overlay du badge centré
+
 def overlay_badge(page_img: Image.Image, text: str) -> Image.Image:
     if not text:
         return page_img
