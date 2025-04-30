@@ -52,17 +52,19 @@ font = ImageFont.truetype(font_path, font_size)
 lock_img_orig = Image.open("lock.png").convert("RGBA")
 
 # Fonction pour déterminer le texte du badge
-# Pour les pages Argent, retour à la ligne "Dragons d’Argent\net d’Or"
+# Retourne le texte du badge adapté selon la page
+# Aucun texte pour Dragons de Cuivre accessible
+# "Dragons d’Argent
+et d’Or" pour pages Argent verrouillées
+# "Dragons d’Or" pour pages Or verrouillées
 def get_badge_text(page_idx: int) -> str:
-    if page_idx > d_levels["Dragons d’Or"]:
+    if page_idx > d_levels["Dragons d’Argent"]:
         # Pages Or
         return "Dragons d’Or"
-    elif page_idx > d_levels["Dragons d’Argent"]:
-        # Pages Argent
-        return "Dragons d’Argent\net d’Or"
     elif page_idx > d_levels["Dragons de Cuivre"]:
-        # Pages Cuivre (should not show badge)
-        return ""
+        # Pages Argent
+        return "Dragons d’Argent
+et d’Or"
     else:
         # Pages accessibles par Dragons de Cuivre
         return ""
