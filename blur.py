@@ -30,19 +30,18 @@ st.sidebar.header("Pages accessibles par niveau")
 p_copper = st.sidebar.slider(
     "Dragons de Cuivre : jusqu’à la page", 1, page_count, min(2, page_count)
 )
-# Dragons d’Argent : jusqu’à cette page (inclus)
+# Dragons d'Argent : jusqu’à cette page (inclus)
 p_silver = st.sidebar.slider(
-    "Dragons d’Argent : jusqu’à la page",
+    "Dragons d'Argent : jusqu’à la page",
     p_copper, page_count, min(p_copper + 2, page_count)
 )
-# Dragons d’Or : accès à toutes les pages
+# Dragons d'Or : accès à toutes les pages
 d_levels = {
     "Dragons de Cuivre": p_copper,
-    "Dragons d’Argent": p_silver,
-    "Dragons d’Or": page_count
+    "Dragons d'Argent": p_silver,
+    "Dragons d'Or": page_count
 }
-
-# Liste des niveaux pour preview & téléchargement
+# Liste des niveaux
 levels = list(d_levels.keys())
 
 # --- Chargement police Bold + icône ---
@@ -51,30 +50,32 @@ font_size = 48
 font = ImageFont.truetype(font_path, font_size)
 lock_img_orig = Image.open("lock.png").convert("RGBA")
 
-# Fonction pour déterminer le texte du badge
-# Aucun texte pour pages accessibles par Dragons de Cuivre
-# "Dragons d’Argent\net d’Or" pour pages Argent verrouillées
-# "Dragons d’Or" pour pages Or verrouillées
-def get_badge_text(page_idx: int) -> str:
-    if page_idx > d_levels["Dragons d’Argent"] and page_idx <= d_levels["Dragons d’Or"]:
-        return "Dragons d’Argent\net d’Or"
-    elif page_idx > d_levels["Dragons d’Or"]:
-        return "Dragons d’Or"
-    else:
-        return ""
+# Détermine le texte du badge pour une page et un niveau donné
+def get_badge_text(page_idx: int, level: str) -> str:
+    # Dragons de Cuivre : Argent et Or bouclés
+    if level == "Dragons de Cuivre":
+        if page_idx > d_levels["Dragons d'Argent"]:
+            return "Dragons d'Or"
+        elif page_idx > d_levels["Dragons de Cuivre"]:
+            return "Dragons d'Argent\net d'Or"
+    # Dragons d'Argent : Or bouclé
+    elif level == "Dragons d'Argent":
+        if page_idx > d_levels["Dragons d'Argent"]:
+            return "Dragons d'Or"
+    # Dragons d'Or : aucun badge
+    return ""
 
-# Fonction pour overlay du badge centré
+# Superpose le badge centré avec retours à la ligne
 def overlay_badge(page_img: Image.Image, text: str) -> Image.Image:
     if not text:
         return page_img
     w, h = page_img.size
     # Redimension de l'icône à 15% de la largeur
-    icon_scale = 0.15
-    icon_w = int(w * icon_scale)
+    icon_w = int(w * 0.15)
     aspect = lock_img_orig.width / lock_img_orig.height
     icon_h = int(icon_w / aspect)
     lock_img = lock_img_orig.resize((icon_w, icon_h), resample=Image.LANCZOS)
-    # Calque badge
+    # Calque transparent pour badge
     badge = Image.new("RGBA", page_img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(badge)
     text_full = f"Réservé aux\n{text}"
@@ -82,17 +83,12 @@ def overlay_badge(page_img: Image.Image, text: str) -> Image.Image:
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
     total_h = icon_h + 10 + text_h
+    # Centrage vertical et horizontal
     y0 = (h - total_h) // 2
     x_icon = (w - icon_w) // 2
     x_text = (w - text_w) // 2
     badge.paste(lock_img, (x_icon, y0), mask=lock_img)
-    draw.multiline_text(
-        (x_text, y0 + icon_h + 10),
-        text_full,
-        font=font,
-        fill="#ffe79f",
-        align="center"
-    )
+    draw.multiline_text((x_text, y0 + icon_h + 10), text_full, font=font, fill="#ffe79f", align="center")
     return Image.alpha_composite(page_img.convert("RGBA"), badge).convert("RGB")
 
 # --- Preview ---
@@ -102,9 +98,10 @@ cols = st.columns(4)
 thumb_w = 120
 for idx, orig in enumerate(pil_pages, start=1):
     img = orig.copy()
+    # Si hors accès, appliquer flou et badge
     if idx > d_levels[preview_lvl]:
         img = img.filter(ImageFilter.GaussianBlur(radius=radius))
-        badge_text = get_badge_text(idx)
+        badge_text = get_badge_text(idx, preview_lvl)
         img = overlay_badge(img, badge_text)
     col = cols[(idx - 1) % 4]
     col.image(img, caption=f"Page {idx}", width=thumb_w)
@@ -120,7 +117,7 @@ for lvl in levels:
         img = orig.copy()
         if idx > max_page:
             img = img.filter(ImageFilter.GaussianBlur(radius=radius))
-            badge_text = get_badge_text(idx)
+            badge_text = get_badge_text(idx, lvl)
             img = overlay_badge(img, badge_text)
         tmp = io.BytesIO()
         img.save(tmp, format="PNG")
@@ -129,9 +126,4 @@ for lvl in levels:
         page.insert_image(rect, stream=tmp.getvalue())
     out_pdf.save(buf)
     buf.seek(0)
-    st.download_button(
-        label=f"⬇️ {lvl}",
-        data=buf,
-        file_name=f"{lvl.replace(' ', '_')}.pdf",
-        mime="application/pdf"
-    )
+    st.download_button(label=f"⬇️ {lvl}", data=buf, file_name=f"{lvl.replace(' ', '_')}.pdf", mime="application/pdf")
